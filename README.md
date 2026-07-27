@@ -1,0 +1,1 @@
+This repository is the companion codebase for my [**Chat with Your Docs: Working with LangChain, RAG, MCP, ChromaDB Made Simple**](https://dev.to/davidarchanjo/chat-with-your-docs-working-with-langchain-rag-mcp-chromadb-made-simple-184j) article.
