@@ -11,19 +11,13 @@ from pathlib import Path
 from fastmcp import FastMCP
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings
-# from pydantic import BaseModel, Field
-from typing import Any #, Dict
+from typing import Any
 
 # Create environment configuration reference
 config = EnvironmentConfiguration() # type: ignore
 
 # Load Uvicorn logger reference
 logger = logging.getLogger("uvicorn.error")
-
-# # Model class definitation for document results
-# class SearchResultItem(BaseModel):
-#     metadata: Dict[str, Any] = Field(description="Source document tracking metadata.")
-#     content: str = Field(description="The matching text content from the knowledge base chunk.")
 
 def create_app():
     """
