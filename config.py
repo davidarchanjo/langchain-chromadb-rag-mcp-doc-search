@@ -3,7 +3,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # Configuration
 class EnvironmentConfiguration(BaseSettings):
     DOCS_DIR: str
-    CHROMA_DIR: str
     CHROMA_COLLECTION_NAME: str
     EMBEDDING_MODEL_NAME: str
     EMBEDDING_MODEL_BASE_URL: str
@@ -17,4 +16,4 @@ class EnvironmentConfiguration(BaseSettings):
     MCP_SERVER_NAME: str
     MCP_SERVER_URL: str
     # Tell Pydantic to read from the `.env` file
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra='allow')

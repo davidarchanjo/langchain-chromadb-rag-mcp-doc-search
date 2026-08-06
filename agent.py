@@ -15,10 +15,9 @@ async def run_agent():
     try:
         print("📥 Fetching and registering MCP tools...")
         discovered_tools = await client.get_tools()
-        print(f"✅ Successfully registered {len(discovered_tools)} tools:")        
-        tool_map = {tool.name: tool for tool in discovered_tools}
-        for name in tool_map.keys():
-            print(f"   ➡️ [Discovered] Name: '{name}'")
+        print(f"✅ Successfully registered {len(discovered_tools)} tools:")
+        for tool in discovered_tools:
+            print(f"   ➡️ [Discovered] Name: '{tool.name}'")
 
         llm = init_chat_model(
             api_key=config.LLM_API_KEY,
@@ -40,14 +39,14 @@ async def run_agent():
           "I couldn't find that information in your documents."
 
         Never skip the search step.
+        The information you found in the documents is the only source of truth.
         Never answer using your own knowledge when the answer should come from the document store.
-        Do not fabricate information.
-        Keep responses concise and factual.
-        """      
+        Do not fabricate information other than what is found in the retrieved documents.
+        Always include the source of the information in your answer when is available, e.g., "Source: [document's name]".
+        """
 
         agent_executor = create_agent(model=llm, tools=discovered_tools, system_prompt=system_prompt)
 
-        session_state = {"messages": []}
         print("-" * 50)
 
         while True:
@@ -59,14 +58,10 @@ async def run_agent():
 
             if not user_prompt.strip():
                 continue
-
-            session_state["messages"].append(("user", user_prompt))
             
-            result = await agent_executor.ainvoke(session_state)  # type: ignore
+            result = await agent_executor.ainvoke({"messages": ("user", user_prompt)})  # type: ignore
 
-            session_state["messages"] = result["messages"]
-
-            print(f"\n🤖 Agent Answer: {session_state['messages'][-1].content}")
+            print(f"\n🤖 Agent Answer: {result['messages'][-1].content}")
             print("-" * 50)
 
     except Exception as e:

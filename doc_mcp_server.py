@@ -4,6 +4,8 @@ FastMCP ASGI server exposing a local document search service.
 Start the server:
     uvicorn doc_mcp_server:app --host 0.0.0.0 --port 3001
 """
+import warnings
+warnings.filterwarnings("ignore")
 
 import logging
 from config import EnvironmentConfiguration
@@ -24,12 +26,6 @@ def create_app():
     Application factory used to create the FastMCP app reference
     """
     
-    if not Path(config.CHROMA_DIR).exists():
-        raise RuntimeError(
-            f"Chroma database '{config.CHROMA_DIR}' does not exist.\n"
-            "Run doc_ingestion.py first."
-        )
-
     embeddings = OpenAIEmbeddings(
         model=config.EMBEDDING_MODEL_NAME,
         base_url=config.EMBEDDING_MODEL_BASE_URL,
@@ -37,8 +33,9 @@ def create_app():
     )
 
     vector_store = Chroma(
+        host="127.0.0.1",
+        port=5000,
         collection_name=config.CHROMA_COLLECTION_NAME,
-        persist_directory=config.CHROMA_DIR,
         embedding_function=embeddings,
     )    
 
@@ -88,6 +85,7 @@ def create_app():
         logger.info("Executing tool: list_documents")
 
         data = vector_store.get(include=["metadatas"])
+
         sources = set()
         metadatas = data.get("metadatas") or []
 
@@ -101,3 +99,10 @@ def create_app():
     return mcp.http_app()
 
 app = create_app()
+
+# --- Entry Point ---
+if __name__ == "__main__":
+    print("🚀 starting Document MCP Server...")
+    print("Access the documentation at: https://127.0.0.1:8000/docs")
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=3001)

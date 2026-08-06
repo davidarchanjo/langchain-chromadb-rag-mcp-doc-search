@@ -9,6 +9,8 @@ The ingestion pipeline is automatically executed once during server startup.
 Upload new documents through:
     POST /documents
 """
+import warnings
+warnings.filterwarnings("ignore")
 
 import sys
 import logging
@@ -48,6 +50,15 @@ embeddings = OpenAIEmbeddings(
 )
 
 
+# Define global vector store to be used to store document chunks
+vector_store = Chroma(
+    host="127.0.0.1",
+    port=5000,
+    collection_name=config.CHROMA_COLLECTION_NAME,
+    embedding_function=embeddings
+)
+
+
 def split_documents(loader: CSVLoader | TextLoader | PyPDFLoader | DirectoryLoader):
     """
     Load documents from the given loader and split them into overlapping chunks
@@ -76,28 +87,15 @@ def embed_and_write(chunks):
     """
     Embed document chunks into embeddings and write them to ChromaDB
     """
-    if len(chunks) == 0:
-        logger.warning("Empty document chunks. Initializing empty ChromaDB collection.")
-        Chroma(
-            collection_name=config.CHROMA_COLLECTION_NAME,
-            persist_directory=config.CHROMA_DIR,
-            embedding_function=embeddings
-        )
-        return
-
-    Chroma.from_documents(
-        documents=chunks,
-        embedding=embeddings,
-        collection_name=config.CHROMA_COLLECTION_NAME,
-        persist_directory=config.CHROMA_DIR,
-    )
-    logger.info("Ingestion complete. %d chunks indexed into ChromaDB.", len(chunks))
+    if len(chunks) > 0:
+        vector_store.add_documents(chunks)
+        logger.info("%d chunks indexed into ChromaDB.", len(chunks))
 
 
 def ingest():
     """
     Full ingestion pipeline: load → split → embed → store.
-    ChromaDB persists the vector store to CHROMA_DIR so the server
+    ChromaDB persists the vector store database so this server
     can load it on startup without re-indexing every time.
     """
     logger.info("Starting ingestion pipeline.")
@@ -109,7 +107,8 @@ def ingest():
         loader_cls=TextLoader,
         loader_kwargs={"encoding": "utf-8"}
     )
-    chunks = split_documents(loader)
+    txt_chunks = split_documents(loader)
+    embed_and_write(txt_chunks)
 
     # Load and process CSV spreadsheets
     csv_loader = DirectoryLoader(
@@ -119,7 +118,7 @@ def ingest():
         loader_kwargs={"encoding": "utf-8"}
     )
     csv_chunks = split_documents(csv_loader)
-    chunks.extend(csv_chunks)
+    embed_and_write(csv_chunks)
 
     # Load and process PDF files
     pdf_loader = DirectoryLoader(
@@ -128,10 +127,7 @@ def ingest():
         loader_cls=PyPDFLoader # type: ignore
     )
     pdf_chunks = split_documents(pdf_loader)
-    chunks.extend(pdf_chunks)
-
-    # Write all gathered chunks at once
-    embed_and_write(chunks)
+    embed_and_write(pdf_chunks)
 
 
 @asynccontextmanager
@@ -198,3 +194,10 @@ async def upload_document(file: UploadFile):
         "message": "Document uploaded and ingested successfully.",
         "filename": file.filename,
     }
+
+# --- Entry Point ---
+if __name__ == "__main__":
+    print("🚀 starting Document Ingestion Server...")
+    print("Access the documentation at: https://127.0.0.1:8000/docs")
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=3002)
